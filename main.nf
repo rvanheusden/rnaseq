@@ -1238,7 +1238,7 @@ if (params.pseudo_aligner == 'salmon'){
 
       gene_tpm_pastes = gene_tpm
         .collate(128)
-        .collect{files -> "paste -d, $gene_ids ${files.join(" ")} >> salmon_merged_gene_tmp.csv"}
+        .collect{files -> "paste -d, $gene_ids ${files.join(" ")} >> salmon_merged_gene_tpm.csv"}
         .join("\n")
       gene_counts_pastes = gene_counts
         .collate(128)
