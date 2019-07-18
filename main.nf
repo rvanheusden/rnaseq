@@ -825,7 +825,7 @@ if(params.aligner == 'hisat2'){
         script:
         index_base = hs2_indices[0].toString() - ~/.\d.ht2l?/
         prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
-        seq_center = params.seq_center ? "--rg-id ${prefix} --rg CN:${params.seq_center.replaceAll('\\s','_')} SM:$prefix" : "--rg-id ${prefix} --rg SM:$prefix"        
+        seq_center = params.seq_center ? "--rg-id ${prefix} --rg CN:${params.seq_center.replaceAll('\\s','_')} SM:$prefix" : "--rg-id ${prefix} --rg SM:$prefix"
         def rnastrandness = ''
         if (forwardStranded && !unStranded){
             rnastrandness = params.singleEnd ? '--rna-strandness F' : '--rna-strandness FR'
@@ -1142,10 +1142,16 @@ process merge_featureCounts {
     gene_ids = "<(tail -n +2 ${input_files[0]} | cut -f1,7 )"
     counts = input_files.collect{filename ->
       // Remove first line and take third column
-      "<(tail -n +2 ${filename} | sed 's:.bam::' | cut -f8)"}.join(" ")
-    """
-    paste $gene_ids $counts > merged_gene_counts.txt
-    """
+      "<(tail -n +2 ${filename} | sed 's:.bam::' | cut -f8)"}
+
+    counts_pastes = counts
+        .collate(128)
+        .collect{files -> "paste $gene_ids ${files.join(" ")} >> merged_gene_counts.txt"}
+        .join("\n")
+
+      """
+      $counts_pastes
+      """
 }
 
 /*
@@ -1225,15 +1231,33 @@ if (params.pseudo_aligner == 'salmon'){
       transcript_ids = "<(cut -f1 -d, ${transcript_tpm_files[0]} | tail -n +2 | cat <(echo 'transcript_id') - )"
 
       // Second field is counts/TPM
-      gene_tpm = gene_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
-      gene_counts = gene_count_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
-      transcript_tpm = transcript_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
-      transcript_counts = transcript_count_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
+      gene_tpm = gene_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}
+      gene_counts = gene_count_files.collect{f -> "<(cut -d, -f2 ${f})"}
+      transcript_tpm = transcript_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}
+      transcript_counts = transcript_count_files.collect{f -> "<(cut -d, -f2 ${f})"}
+
+      gene_tpm_pastes = gene_tpm
+        .collate(128)
+        .collect{files -> "paste -d, $gene_ids ${files.join(" ")} >> salmon_merged_gene_tmp.csv"}
+        .join("\n")
+      gene_counts_pastes = gene_counts
+        .collate(128)
+        .collect{files -> "paste -d, $gene_ids ${files.join(" ")} >> salmon_merged_gene_counts.csv"}
+        .join("\n")
+      transcript_tpm_pastes = transcript_tpm
+        .collate(128)
+        .collect{files -> "paste -d, $transcript_ids ${files.join(" ")} >> salmon_merged_transcript_tpm.csv"}
+        .join("\n")
+      transcript_counts_pastes = transcript_counts
+        .collate(128)
+        .collect{files -> "paste -d, $transcript_ids ${files.join(" ")} >> salmon_merged_transcript_counts.csv"}
+        .join("\n")
+
       """
-      paste -d, $gene_ids $gene_tpm > salmon_merged_gene_tpm.csv
-      paste -d, $gene_ids $gene_counts > salmon_merged_gene_counts.csv
-      paste -d, $transcript_ids $transcript_tpm > salmon_merged_transcript_tpm.csv
-      paste -d, $transcript_ids $transcript_counts > salmon_merged_transcript_counts.csv
+      $gene_tpm_pastes
+      $gene_counts_pastes
+      $transcript_tpm_pastes
+      $transcript_counts_pastes
       """
     }
 } else {
