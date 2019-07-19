@@ -1218,7 +1218,7 @@ if (params.pseudo_aligner == 'salmon'){
     }
 
     process salmon_merge {
-      label 'mid_memory'
+      label 'high_memory'
       publishDir "${params.outdir}/salmon", mode: 'copy'
 
       input:
