@@ -377,12 +377,6 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
    return yaml_file
 }
 
-def create_batched_paste_command(flags, inputs, outfile) {
-  return inputs
-    .collect{files -> "paste.py ${flags ?: ""} $outfile ${files.join(" ")} > $outfile"}
-    .join("\n")
-}
-
 
 /*
  * Parse software version numbers
@@ -1148,13 +1142,9 @@ process merge_featureCounts {
     gene_ids = "<(tail -n +2 ${input_files[0]} | cut -f1,7 )"
     counts = input_files.collect{filename ->
       // Remove first line and take third column
-      "<(tail -n +2 ${filename} | sed 's:.bam::' | cut -f8)"}
-
-    counts_pastes = create_batched_paste_command(null, counts, "merged_gene_counts.txt")
-
+      "<(tail -n +2 ${filename} | sed 's:.bam::' | cut -f8)"}.join(" ")
     """
-    paste $gene_ids > merged_gene_counts.txt
-    $counts_pastes
+    paste.py $gene_ids $counts > merged_gene_counts.txt
     """
 }
 
@@ -1217,7 +1207,7 @@ if (params.pseudo_aligner == 'salmon'){
     }
 
     process salmon_merge {
-      label 'high_memory'
+      label 'mid_memory'
       publishDir "${params.outdir}/salmon", mode: 'copy'
 
       input:
@@ -1235,25 +1225,15 @@ if (params.pseudo_aligner == 'salmon'){
       transcript_ids = "<(cut -f1 -d, ${transcript_tpm_files[0]} | tail -n +2 | cat <(echo 'transcript_id') - )"
 
       // Second field is counts/TPM
-      gene_tpm = gene_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}
-      gene_counts = gene_count_files.collect{f -> "<(cut -d, -f2 ${f})"}
-      transcript_tpm = transcript_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}
-      transcript_counts = transcript_count_files.collect{f -> "<(cut -d, -f2 ${f})"}
-
-      gene_tpm_pastes = create_batched_paste_command("-d,", gene_tpm, "salmon_merged_gene_tpm.csv")
-      gene_counts_pastes = create_batched_paste_command("-d,", gene_counts, "salmon_merged_gene_counts.csv")
-      transcript_tpm_pastes = create_batched_paste_command("-d,", transcript_tpm, "salmon_merged_transcript_tpm.csv")
-      transcript_counts_pastes = create_batched_paste_command("-d,", transcript_counts, "salmon_merged_transcript_counts.csv")
-
+      gene_tpm = gene_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
+      gene_counts = gene_count_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
+      transcript_tpm = transcript_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
+      transcript_counts = transcript_count_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
       """
-      paste -d, $gene_ids > salmon_merged_gene_tpm.csv
-      $gene_tpm_pastes
-      paste -d, $gene_ids > salmon_merged_gene_counts.csv
-      $gene_counts_pastes
-      paste -d, $transcript_ids > salmon_merged_transcript_tpm.csv
-      $transcript_tpm_pastes
-      paste -d, $transcript_ids > salmon_merged_transcript_counts.csv
-      $transcript_counts_pastes
+      paste.py -d, $gene_ids $gene_tpm > salmon_merged_gene_tpm.csv
+      paste.py -d, $gene_ids $gene_counts > salmon_merged_gene_counts.csv
+      paste.py -d, $transcript_ids $transcript_tpm > salmon_merged_transcript_tpm.csv
+      paste.py -d, $transcript_ids $transcript_counts > salmon_merged_transcript_counts.csv
       """
     }
 } else {
