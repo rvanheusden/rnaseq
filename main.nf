@@ -379,8 +379,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
 
 def create_batched_paste_command(flags, inputs, outfile) {
   return inputs
-    .collate(128)
-    .collect{files -> "echo \"\$(paste ${flags ?: ""} $outfile ${files.join(" ")})\" > $outfile"}
+    .collect{files -> "paste.py ${flags ?: ""} $outfile ${files.join(" ")} > $outfile"}
     .join("\n")
 }
 
