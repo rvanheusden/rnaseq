@@ -825,7 +825,7 @@ if(params.aligner == 'hisat2'){
         script:
         index_base = hs2_indices[0].toString() - ~/.\d.ht2l?/
         prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
-        seq_center = params.seq_center ? "--rg-id ${prefix} --rg CN:${params.seq_center.replaceAll('\\s','_')} SM:$prefix" : "--rg-id ${prefix} --rg SM:$prefix"
+        seq_center = params.seq_center ? "--rg-id ${prefix} --rg CN:${params.seq_center.replaceAll('\\s','_')} SM:$prefix" : "--rg-id ${prefix} --rg SM:$prefix"        
         def rnastrandness = ''
         if (forwardStranded && !unStranded){
             rnastrandness = params.singleEnd ? '--rna-strandness F' : '--rna-strandness FR'
@@ -1144,7 +1144,7 @@ process merge_featureCounts {
       // Remove first line and take third column
       "<(tail -n +2 ${filename} | sed 's:.bam::' | cut -f8)"}.join(" ")
     """
-    paste.py $gene_ids $counts > merged_gene_counts.txt
+    paste $gene_ids $counts > merged_gene_counts.txt
     """
 }
 
@@ -1230,10 +1230,10 @@ if (params.pseudo_aligner == 'salmon'){
       transcript_tpm = transcript_tpm_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
       transcript_counts = transcript_count_files.collect{f -> "<(cut -d, -f2 ${f})"}.join(" ")
       """
-      paste.py -d, $gene_ids $gene_tpm > salmon_merged_gene_tpm.csv
-      paste.py -d, $gene_ids $gene_counts > salmon_merged_gene_counts.csv
-      paste.py -d, $transcript_ids $transcript_tpm > salmon_merged_transcript_tpm.csv
-      paste.py -d, $transcript_ids $transcript_counts > salmon_merged_transcript_counts.csv
+      paste -d, $gene_ids $gene_tpm > salmon_merged_gene_tpm.csv
+      paste -d, $gene_ids $gene_counts > salmon_merged_gene_counts.csv
+      paste -d, $transcript_ids $transcript_tpm > salmon_merged_transcript_tpm.csv
+      paste -d, $transcript_ids $transcript_counts > salmon_merged_transcript_counts.csv
       """
     }
 } else {
