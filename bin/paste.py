@@ -2,9 +2,16 @@
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from subprocess import Popen, PIPE
 import sys
 
 def getlines(path):
+    if path.startswith("<(") and path.endswith(")"):
+        cmd = path[2:-1]
+
+        with Popen(cmd, shell=True, stdout=PIPE) as process:
+            return [line.decode('utf-8') for line in process.stdout.readlines()]
+
     with open(path) as file:
         return file.readlines()
 
